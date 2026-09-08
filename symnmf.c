@@ -20,7 +20,7 @@ int main( int argc, char *argv[])
         return 1;
     }
 
-    File *file = fopen(file_name, "r");
+    FILE *file = fopen(file_name, "r");
     if (file == NULL)
     {
         fprintf(stderr, "An Error Has Occured\n");
@@ -34,19 +34,22 @@ int main( int argc, char *argv[])
         fprintf(stderr, "An Error Has Occured\n");
         return 1;
     }
+
+    double **pSimilarityMatrix = similarity_matrix(pListOfVec, N, d);
+    double **pDiagonalMatrix = diagonal_matrix(pSimilarityMatrix, N);
+    double **pLaplacianMatrix = laplacian_matrix(pDiagonalMatrix, pSimilarityMatrix, N);
+
     if(goal=="sym")
     {
-        double **pSimilarityMatrix = similarity_matrix(pListOfVec, N, d);
         print_matrix(pSimilarityMatrix, N, N);
     }
     if(goal=="ddg")
+
     {
-        double **pDiagonalMatrix = diagonal_matrix(pSimilarityMatrix, N);
         print_matrix(pDiagonalMatrix, N, N);
     }
     if(goal=="norm")
     {
-        double **pLaplacianMatrix = laplacian_matrix(pDiagonalMatrix, pSimilarityMatrix, N);
         print_matrix(pLaplacianMatrix, N, N);
     }
     cleanup(pListOfVec, NULL, NULL, NULL, N, 0, NULL, NULL);
@@ -134,7 +137,7 @@ double **laplacian_matrix(double **pDiagonalMatrix, double **pSimilarityMatrix, 
     return pLaplacianMatrix;
 }
 
-double **optimize_H_matrix(double **pH, double **pLaplacianMatrix, int N, int K, int iter)
+double **optimize_H_matrix(double **pH, double **pLaplacianMatrix, int N, int K, int iter, double EPSILON, double BETA)
 {
     int i, j, k;
     double **pH_new = malloc(N * sizeof(double *));
@@ -178,7 +181,7 @@ double **optimize_H_matrix(double **pH, double **pLaplacianMatrix, int N, int K,
             }
         }
 
-        if (max_diff < EPSILON or t == iter - 1)
+        if (max_diff < EPSILON || t == iter - 1)
         {
             break;
         }
