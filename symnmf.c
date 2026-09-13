@@ -4,13 +4,14 @@
 #include <stdbool.h>
 #include <math.h>
 #include <string.h>
+#include "symnmf.h"
 
 
 int main( int argc, char *argv[])
 {
     char *goal = NULL;
     char *file_name = NULL;
-    char **pListOfVec = NULL;
+    double **pListOfVec = NULL;
     int iter = 300, N = 0, d = 0;
     const double EPSILON = 1e-4;
     const double BETA = 0.5;
@@ -97,7 +98,7 @@ double **similarity_matrix(double **pListOfVec, int N, int d)
 
 double **diagonal_matrix(double **pSimilarityMatrix, int N)
 {
-    int i;
+    int i,k,j;
     double **pDiagonalMatrix = malloc(N * sizeof(double *));
     for (i = 0; i < N; i++)
     {
@@ -281,7 +282,6 @@ double **read_vectors_from_file(FILE *file, int *N, int *d)
         {
             *d = current_d;
         }
-        /*add the vector to the list*/
         if (*N == capacityVecList)
         {
             capacityVecList *= 2;
