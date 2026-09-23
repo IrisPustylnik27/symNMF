@@ -6,6 +6,8 @@
 
 void print_matrix(double **matrix, int rows, int cols);
 
+void free_matrix(double **matrix, int n);
+
 double **similarity_matrix(double **pListOfVec, int N, int d);
 
 double **diagonal_matrix(double **pSimilarityMatrix, int N);

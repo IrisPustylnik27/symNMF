@@ -12,7 +12,8 @@ int main( int argc, char *argv[])
     char *goal = NULL;
     char *file_name = NULL;
     double **pListOfVec = NULL;
-    int iter = 300, N = 0, d = 0;
+    int N = 0, d = 0;
+    const int ITER = 300;
     const double EPSILON = 1e-4;
     const double BETA = 0.5;
 
@@ -53,7 +54,11 @@ int main( int argc, char *argv[])
     {
         print_matrix(pLaplacianMatrix, N, N);
     }
-    cleanup(pListOfVec, NULL, NULL, NULL, N, 0, NULL, NULL);
+
+    free_matrix(pListOfVec, N);
+    free_matrix(pSimilarityMatrix, N);
+    free_matrix(pDiagonalMatrix, N);
+    free_matrix(pLaplacianMatrix, N);
     return 0;
 }
 
@@ -138,9 +143,12 @@ double **laplacian_matrix(double **pDiagonalMatrix, double **pSimilarityMatrix, 
     return pLaplacianMatrix;
 }
 
-double **optimize_H_matrix(double **pH, double **pLaplacianMatrix, int N, int K, int iter, double EPSILON, double BETA)
+double **optimize_H_matrix(double **pH, double **pLaplacianMatrix, int N, int K)
 {
     int i, j, k;
+    double **pH_old;
+    double **pNumerator;
+    double **pDenominator;
     double **pH_new = malloc(N * sizeof(double *));
     for (i = 0; i < N; i++)
     {
@@ -151,11 +159,11 @@ double **optimize_H_matrix(double **pH, double **pLaplacianMatrix, int N, int K,
         }
     }
 
-    for (int t = 0; t < iter; t++)
+    for (int t = 0; t < ITER; t++)
     {
-        double **pH_old = pH_new;
-        double **pNumerator = multiply_matrices(pLaplacianMatrix, pH_old, N, N, K);
-        double **pDenominator = multiply_matrices(pH_old, transpose_matrix(pH_old, N, K), N, K, N);
+        pH_old = pH_new;
+        pNumerator = multiply_matrices(pLaplacianMatrix, pH_old, N, N, K);
+        pDenominator = multiply_matrices(pH_old, transpose_matrix(pH_old, N, K), N, K, N);
         pDenominator = multiply_matrices(pDenominator, pH_old, N, N, K);
 
         for (i = 0; i < N; i++)
@@ -186,8 +194,6 @@ double **optimize_H_matrix(double **pH, double **pLaplacianMatrix, int N, int K,
         {
             break;
         }
-
-        cleanup(NULL, NULL, NULL, NULL, 0, 0, NULL, NULL);
     }
 
     return pH_new;
@@ -291,7 +297,7 @@ double **read_vectors_from_file(FILE *file, int *N, int *d)
         pListOfVec[*N] = safe_realloc(pVector, *d * sizeof(double));
         (*N)++;
     }
-    cleanup(NULL, NULL, NULL, NULL, 0, 0, pLine, NULL);
+    free(pLine);
     return pListOfVec;
 }
 
@@ -342,4 +348,16 @@ void *safe_realloc(void *pointer, size_t new_size)
         return NULL;
     }
     return new_pointer;
+}
+
+void free_matrix(double **matrix, int n){
+    int i;
+    if (matrix == NULL){
+        return;
+    }
+    for (i = 0; i < n; i++)
+        {
+            free(matrix[i]);
+        }
+        free(matrix);
 }
