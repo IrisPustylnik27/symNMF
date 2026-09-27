@@ -1,4 +1,7 @@
 #define _GNU_SOURCE
+#define ITER 300
+#define EPSILON 1e-4
+#define BETA 0.5
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -13,9 +16,6 @@ int main( int argc, char *argv[])
     char *file_name = NULL;
     double **pListOfVec = NULL;
     int N = 0, d = 0;
-    const int ITER = 300;
-    const double EPSILON = 1e-4;
-    const double BETA = 0.5;
 
     if (!parse_arguments(argc, argv, &goal, &file_name))
     {
@@ -145,7 +145,7 @@ double **laplacian_matrix(double **pDiagonalMatrix, double **pSimilarityMatrix, 
 
 double **optimize_H_matrix(double **pH, double **pLaplacianMatrix, int N, int K)
 {
-    int i, j, k;
+    int i, j;
     double **pH_old;
     double **pNumerator;
     double **pDenominator;
@@ -190,7 +190,7 @@ double **optimize_H_matrix(double **pH, double **pLaplacianMatrix, int N, int K)
             }
         }
 
-        if (max_diff < EPSILON || t == iter - 1)
+        if (max_diff < EPSILON || t == ITER - 1)
         {
             break;
         }
@@ -301,54 +301,6 @@ double **read_vectors_from_file(FILE *file, int *N, int *d)
     return pListOfVec;
 }
 
-void cleanup(double **pListOfVec, double **pCentroids, double *pCentroid, int *assignmentsToClusters, int N, int K, char *pLine, double *pVector)
-{
-    int i;
-    if (pLine != NULL){
-        free(pLine);
-    }
-    if (pVector != NULL)
-    {
-        free(pVector);
-    }
-    if (assignmentsToClusters != NULL)
-    {
-        free(assignmentsToClusters);
-    }
-    if (pListOfVec != NULL)
-    {
-        for (i = 0; i < N; i++)
-        {
-            free(pListOfVec[i]);
-        }
-        free(pListOfVec);
-    }
-    if (pCentroids != NULL)
-    {
-        for (i = 0; i < K; i++)
-        {
-            free(pCentroids[i]);
-        }
-        free(pCentroids);
-    }
-    if (pCentroid != NULL)
-    {
-        free(pCentroid);
-    }
-}
-
-void *safe_realloc(void *pointer, size_t new_size)
-{
-    void *new_pointer = realloc(pointer, new_size);
-    if (new_pointer == NULL)
-    {
-        fprintf(stderr, "An Error Has Occured\n");
-        free(pointer);
-        exit(1);
-        return NULL;
-    }
-    return new_pointer;
-}
 
 void free_matrix(double **matrix, int n){
     int i;
