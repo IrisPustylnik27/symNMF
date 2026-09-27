@@ -35,14 +35,13 @@ def main():
             print("An Error Has Occurred")
             sys.exit(1)
 
-    if k <= 1 or k >= N:
+    if k < 1 or k >= N:
         print("An Error Has Occurred")
         sys.exit(1)
 
     if goal == "symnmf":
         laplacian = symnmfmodule.norm(vectors)
-        lap_df = pd.DataFrame(laplacian)
-        avg =lap_df.values.mean()
+        avg = np.array(laplacian).mean()
         low, high = 0, 2*sqrt(avg/k)
         decomposition_matrix = np.random.uniform(low, high, size=(N, k)).tolist()
         ans_matrix = symnmfmodule.symnmf(decomposition_matrix, laplacian)
@@ -61,6 +60,16 @@ def main():
         sys.exit(1)
 
     print_matrix(ans_matrix)
+    
+
+def fit(X, k):
+    N = len(X)
+    laplacian_matrix = symnmfmodule.norm(X)
+    avg = np.array(laplacian_matrix).mean()
+    low, high = 0, 2*sqrt(avg/k)
+    decomposition_matrix = np.random.uniform(low, high, size=(N, k)).tolist()
+    ans_matrix = symnmfmodule.symnmf(decomposition_matrix, laplacian_matrix)
+    return ans_matrix
 
 
 def print_matrix(matrix):

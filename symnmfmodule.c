@@ -40,7 +40,14 @@ static PyObject *symnmf_wrapper (PyObject *self, PyObject *args){
 
     result = optimize_H_matrix(H, W, n, k);
 
-    py_H = matrix_array_to_python_list(H, n, k);
+    if(result == NULL)
+    {
+        free_matrix(W, n);
+        free_matrix(H, n);
+        return NULL;
+    }
+
+    py_H = matrix_array_to_python_list(result, n, k);
 
     free_matrix(W, n);
     free_matrix(H, n);
@@ -114,7 +121,7 @@ static PyObject *ddg_wrapper (PyObject *self, PyObject *args){
         return NULL;
     }
 
-    result = diagonal_matrix(A, n, n);
+    result = diagonal_matrix(A, n);
     if (result == NULL)
     {
         free_matrix(X, n);
@@ -161,7 +168,7 @@ static PyObject *norm_wrapper (PyObject *self, PyObject *args){
         return NULL;
     }
 
-    D = diagonal_matrix(A, n, n);
+    D = diagonal_matrix(A, n);
     if (D == NULL)
     {
         free_matrix(X, n);
@@ -169,7 +176,7 @@ static PyObject *norm_wrapper (PyObject *self, PyObject *args){
         return NULL;
     }
 
-    result = norm_matrix(D, A, n, n);
+    result = norm_matrix(D, A, n);
     if (result == NULL)
     {
         free_matrix(X, n);

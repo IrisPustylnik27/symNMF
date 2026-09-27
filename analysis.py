@@ -26,7 +26,7 @@ def main():
     sil_symnmf = silhouette_score(X, symnmf_labels)
     ari_score = adjusted_rand_score(symnmf_labels, kmeans_labels)
 
-   #print the results
+
     print(f"nmf: {sil_symnmf:.4f}")
     print(f"kmeans: {sil_kmeans:.4f}")
     print(f"ari: {ari_score:.4f}")
@@ -66,8 +66,8 @@ def euclidean_distance(vec1, vec2):
     return sum((a - b) ** 2 for a, b in zip(vec1.values, vec2.values)) ** 0.5
 
 def get_kmeans_labels(data_matrix, k):
-    epsilon = 0.001
-    maxIter = 400 
+    epsilon = 1e-4
+    maxIter = 300
     counter = 0
     isConverged = False
     clusters = []

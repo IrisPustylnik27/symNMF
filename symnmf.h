@@ -22,7 +22,7 @@ double **transpose_matrix(double **A, int rows, int cols);
 
 double calc_frobenius_norm(double **A, double **B, int rows, int cols);
 
-double calc_euclidian_distance(double *vec1, double *vec2, int d);
+double calc__square_euclidian_distance(double *vec1, double *vec2, int d);
 
 double **read_vectors_from_file(FILE *file, int *N, int *d);
 
