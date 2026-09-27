@@ -10,17 +10,28 @@
 #include "symnmf.h"
 
 
-int main( int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     char *goal = NULL;
     char *file_name = NULL;
     double **pListOfVec = NULL;
     double **pSimilarityMatrix, **pDiagonalMatrix, **pLaplacianMatrix;
-    File *file = NULL;
+    FILE *file = NULL;
     int N = 0, d = 0;
 
-    if (!parse_arguments(argc, argv, &goal, &file_name))
+    if(argc != 3){
+        fprintf(stderr, "An Error Has Occured\n");
+        return 1;
+    }
+    goal = argv[1];
+    file_name = argv[2];
+
+    if (strcmp(goal, "sym") != 0 &&
+        strcmp(goal, "ddg") != 0 && 
+        strcmp(goal, "norm") != 0)
     {
+        fprintf(stderr, "An Error Has Occured\n");
+        free_matrix(pListOfVec, N);
         return 1;
     }
 
@@ -32,16 +43,6 @@ int main( int argc, char *argv[])
     }       
 
     pListOfVec = read_vectors_from_file(file, &N, &d);
-
-    if(goal == NULL || 
-        (strcmp(goal, "sym") != 0 &&
-        strcmp(goal, "ddg") != 0 && 
-        strcmp(goal, "norm") != 0))
-    {
-        fprintf(stderr, "An Error Has Occured\n");
-        free_matrix(pListOfVec, N);
-        return 1;
-    }
 
     pSimilarityMatrix = similarity_matrix(pListOfVec, N, d);
     pDiagonalMatrix = diagonal_matrix(pSimilarityMatrix, N);
@@ -88,6 +89,7 @@ void print_matrix(double **matrix, int rows, int cols)
 double **similarity_matrix(double **pListOfVec, int N, int d)
 {
     int i, j;
+    double distance;
     double **pSimilarityMatrix = malloc(N * sizeof(double *));
     for (i = 0; i < N; i++)
     {
@@ -100,7 +102,7 @@ double **similarity_matrix(double **pListOfVec, int N, int d)
             }
             else
             {
-                double distance = calc_square_euclidian_distance(pListOfVec[i], pListOfVec[j], d);
+                distance = calc_square_euclidian_distance(pListOfVec[i], pListOfVec[j], d);
                 pSimilarityMatrix[i][j] = exp(-distance/2.0);
             }
         }
@@ -111,6 +113,7 @@ double **similarity_matrix(double **pListOfVec, int N, int d)
 double **diagonal_matrix(double **pSimilarityMatrix, int N)
 {
     int i, k, j;
+    double sum;
     double **pDiagonalMatrix = malloc(N * sizeof(double *));
 
     for (i = 0; i < N; i++)
@@ -120,7 +123,7 @@ double **diagonal_matrix(double **pSimilarityMatrix, int N)
         {
             if (i == j)
             {
-                double sum = 0.0;
+                sum = 0.0;
                 for (k = 0; k < N; k++)
                 {
                     sum += pSimilarityMatrix[i][k];
@@ -136,7 +139,7 @@ double **diagonal_matrix(double **pSimilarityMatrix, int N)
     return pDiagonalMatrix;
 }
 
-double **norm_matrix(double **pDiagonalMatrix, double **pSimilarityMatrix, int N)
+double **laplacian_matrix(double **pDiagonalMatrix, double **pSimilarityMatrix, int N)
 {
     int i, j;
     double **pLaplacianMatrix = malloc(N * sizeof(double *));
@@ -266,7 +269,7 @@ double calc_square_frobenius_norm(double **A, double **B, int rows, int cols)
     return sum;
 }
 
-double calc__square_euclidian_distance(double *vec1, double *vec2, int d)
+double calc_square_euclidian_distance(double *vec1, double *vec2, int d)
 {
     int i;
     double sum = 0.0;
@@ -283,7 +286,7 @@ double **read_vectors_from_file(FILE *file, int *N, int *d)
     size_t len = 0;
     char *pLine = NULL, *token;
     int capacity = 1, capacityVecList = 1, current_d = 0;
-    double **pVector = NULL, **temp;
+    double *pVector = NULL, **temp;
     double **pListOfVec = malloc(capacityVecList * sizeof(double *));
 
     while ((getline(&pLine, &len, file)) != -1)

@@ -20,9 +20,9 @@ double **multiply_matrices(double **A, double **B, int rowsA, int colsA, int col
 
 double **transpose_matrix(double **A, int rows, int cols);
 
-double calc_frobenius_norm(double **A, double **B, int rows, int cols);
+double calc_square_frobenius_norm(double **A, double **B, int rows, int cols);
 
-double calc__square_euclidian_distance(double *vec1, double *vec2, int d);
+double calc_square_euclidian_distance(double *vec1, double *vec2, int d);
 
 double **read_vectors_from_file(FILE *file, int *N, int *d);
 

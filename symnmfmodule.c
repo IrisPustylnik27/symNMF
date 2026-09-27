@@ -176,7 +176,7 @@ static PyObject *norm_wrapper (PyObject *self, PyObject *args){
         return NULL;
     }
 
-    result = norm_matrix(D, A, n);
+    result = laplacian_matrix(D, A, n);
     if (result == NULL)
     {
         free_matrix(X, n);
