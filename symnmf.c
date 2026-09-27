@@ -301,6 +301,18 @@ double **read_vectors_from_file(FILE *file, int *N, int *d)
     return pListOfVec;
 }
 
+void *safe_realloc(void *pointer, size_t new_size)
+{
+    void *new_pointer = realloc(pointer, new_size);
+    if (new_pointer == NULL)
+    {
+        fprintf(stderr, "An Error Has Occured\n");
+        free(pointer);
+        exit(1);
+        return NULL;
+    }
+    return new_pointer;
+}
 
 void free_matrix(double **matrix, int n){
     int i;
