@@ -26,8 +26,6 @@ double calc_euclidian_distance(double *vec1, double *vec2, int d);
 
 double **read_vectors_from_file(FILE *file, int *N, int *d);
 
-void cleanup(double **pListOfVec, double **pCentroids, double *pCentroid, int *assignmentsToClusters, int N, int K, char *pLine, double *pVector);
-
 void *safe_realloc(void *pointer, size_t new_size);
 
 #endif

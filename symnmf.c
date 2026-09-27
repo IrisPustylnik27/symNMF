@@ -301,42 +301,6 @@ double **read_vectors_from_file(FILE *file, int *N, int *d)
     return pListOfVec;
 }
 
-void cleanup(double **pListOfVec, double **pCentroids, double *pCentroid, int *assignmentsToClusters, int N, int K, char *pLine, double *pVector)
-{
-    int i;
-    if (pLine != NULL){
-        free(pLine);
-    }
-    if (pVector != NULL)
-    {
-        free(pVector);
-    }
-    if (assignmentsToClusters != NULL)
-    {
-        free(assignmentsToClusters);
-    }
-    if (pListOfVec != NULL)
-    {
-        for (i = 0; i < N; i++)
-        {
-            free(pListOfVec[i]);
-        }
-        free(pListOfVec);
-    }
-    if (pCentroids != NULL)
-    {
-        for (i = 0; i < K; i++)
-        {
-            free(pCentroids[i]);
-        }
-        free(pCentroids);
-    }
-    if (pCentroid != NULL)
-    {
-        free(pCentroid);
-    }
-}
-
 void *safe_realloc(void *pointer, size_t new_size)
 {
     void *new_pointer = realloc(pointer, new_size);
