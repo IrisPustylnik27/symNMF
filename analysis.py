@@ -5,27 +5,30 @@ from sklearn.metrics import silhouette_score, adjusted_rand_score
 import symnmf
 
 def main():
-    if len(sys.argv) < 3:
-        return
+    if len(sys.argv) != 3:
+        print("An Error Has Occurred")
+        sys.exit(1)
     
     k = int(sys.argv[1])
     file_name = sys.argv[2]
 
     try:
         X = np.loadtxt(file_name, delimiter=',')
-    except Exception as e:
+    except Exception:
         print("An Error Has Occurred")
         sys.exit(1)
 
     kmeans_labels = get_kmeans_labels(X, k)
     H_matrix = symnmf.fit(X, k) 
     symnmf_labels = np.argmax(H_matrix, axis=1)
+    
+    if len(np.unique(symnmf_labels)) < 2 or len(np.unique(kmeans_labels)) < 2:
+        print("An Error Has Occurred")
+        sys.exit(1)
 
-    # Calculate Silhouette Scores and Adjusted Rand Index
     sil_kmeans = silhouette_score(X, kmeans_labels)
     sil_symnmf = silhouette_score(X, symnmf_labels)
     ari_score = adjusted_rand_score(symnmf_labels, kmeans_labels)
-
 
     print(f"nmf: {sil_symnmf:.4f}")
     print(f"kmeans: {sil_kmeans:.4f}")

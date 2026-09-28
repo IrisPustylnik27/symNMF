@@ -4,72 +4,133 @@
 #define BETA 0.5
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <math.h>
 #include <string.h>
 #include "symnmf.h"
 
+static void print_matrix(double **matrix, int rows, int cols);
+
+static double **multiply_matrices(double **A, double **B, int rowsA, int colsA, int colsB);
+
+static double **calculate_new_H_matrix(double **pH_old, double **norm_matrix, int n, int K);
+
+static int is_valid_goal(const char *goal);
+
+static int run_goal(const char *goal, double **vectors, int n, int d);
+
+static double **transpose_matrix(double **A, int rows, int cols);
+
+static double squared_frobenius_norm(double **A, double **B, int rows, int cols);
+
+static double squared_euclidean_distance(double *vec1, double *vec2, int d);
+
+static double **read_vectors_from_file(FILE *file, int *n, int *d);
+
+static int resize_vector(double **vector, size_t new_size);
+
+static int resize_matrix(double ***matrix, size_t new_rows);
+
+static double *parse_vector(const char *line, int *d);
+
+static double **load_vectors(char *file_name, int n, int d);
+
+static void fill_new_H(double **H_new, double **H_old, double **numerator, double **denominator, int n, int k)ж
+
 
 int main(int argc, char *argv[])
 {
-    char *goal = NULL;
-    char *file_name = NULL;
-    double **pListOfVec = NULL;
-    double **pSimilarityMatrix, **pDiagonalMatrix, **pLaplacianMatrix;
-    FILE *file = NULL;
-    int N = 0, d = 0;
+    char *goal = NULL, *file_name = NULL;
+    double **vectors = NULL;
+    int n = 0, d = 0;
 
-    if(argc != 3){
-        fprintf(stderr, "An Error Has Occured\n");
+    if (argc != 3)
+    {
+        fprintf(stderr, "An Error Has Occurred\n");
         return 1;
     }
     goal = argv[1];
     file_name = argv[2];
 
-    if (strcmp(goal, "sym") != 0 &&
-        strcmp(goal, "ddg") != 0 && 
-        strcmp(goal, "norm") != 0)
+    if (!is_valid_goal(goal))
     {
-        fprintf(stderr, "An Error Has Occured\n");
-        free_matrix(pListOfVec, N);
+        fprintf(stderr, "An Error Has Occurred\n");
         return 1;
     }
 
-    file = fopen(file_name, "r");
-    if (file == NULL)
-    {
-        fprintf(stderr, "An Error Has Occured\n");
+    if(!(vectors = load_vectors(file_name, &n, &d))){
         return 1;
-    }       
-
-    pListOfVec = read_vectors_from_file(file, &N, &d);
-
-    pSimilarityMatrix = similarity_matrix(pListOfVec, N, d);
-    pDiagonalMatrix = diagonal_matrix(pSimilarityMatrix, N);
-    pLaplacianMatrix = laplacian_matrix(pDiagonalMatrix, pSimilarityMatrix, N);
-
-    if(strcmp(goal, "sym") == 0)
-    {
-        print_matrix(pSimilarityMatrix, N, N);
-    }
-    if(strcmp(goal, "ddg") == 0)
-
-    {
-        print_matrix(pDiagonalMatrix, N, N);
-    }
-    if(strcmp(goal, "norm") == 0)
-    {
-        print_matrix(pLaplacianMatrix, N, N);
     }
 
-    free_matrix(pListOfVec, N);
-    free_matrix(pSimilarityMatrix, N);
-    free_matrix(pDiagonalMatrix, N);
-    free_matrix(pLaplacianMatrix, N);
+    if (!run_goal(goal, vectors, n, d))
+    {
+        free_matrix(vectors, n);
+        fprintf(stderr, "An Error Has Occurred\n");
+        return 1;
+    }
+
+    free_matrix(vectors, n);
     return 0;
 }
 
-void print_matrix(double **matrix, int rows, int cols)
+static double **load_vectors(char *file_name, int *n, int *d){
+    FILE *file = NULL;
+    double **vectors = NULL;
+    if (!(file = fopen(file_name, "r")))
+    {
+        fprintf(stderr, "An Error Has Occurred\n");
+        return NULL;
+    }
+    if (!(vectors = read_vectors_from_file(file, n, d)))
+    {
+        fprintf(stderr, "An Error Has Occurred\n");
+        fclose(file);
+        return NULL;
+    }
+    fclose(file);
+    return vectors;
+}
+
+static int is_valid_goal(const char *goal)
+{
+    return strcmp(goal, "sym") == 0 || strcmp(goal, "ddg") == 0 || strcmp(goal, "norm") == 0;
+}
+
+static int run_goal(const char *goal, double **vectors, int n, int d)
+{
+    double **A = NULL, **D = NULL, **W = NULL;
+    int success = 1;
+
+    if (!(A = similarity_matrix(vectors, n, d)))
+        goto error;
+    if (strcmp(goal, "sym") == 0)
+    {
+        print_matrix(A, n, n);
+        goto cleanup;
+    }
+    if (!(D = diagonal_matrix(A, n)))
+        goto error;
+    if (strcmp(goal, "ddg") == 0)
+    {
+        print_matrix(D, n, n);
+        goto cleanup;
+    }
+    if (!(W = normalized_similarity_matrix(D, A, n)))
+        goto error;
+    print_matrix(W, n, n);
+    goto cleanup;
+
+error:
+    success = 0;
+
+cleanup:
+    free_matrix(A, n);
+    free_matrix(D, n);
+    free_matrix(W, n);
+
+    return success;
+}
+
+static void print_matrix(double **matrix, int rows, int cols)
 {
     int i, j;
     for (i = 0; i < rows; i++)
@@ -86,149 +147,182 @@ void print_matrix(double **matrix, int rows, int cols)
     }
 }
 
-double **similarity_matrix(double **pListOfVec, int N, int d)
+double **similarity_matrix(double **vectors, int n, int d)
 {
     int i, j;
     double distance;
-    double **pSimilarityMatrix = malloc(N * sizeof(double *));
-    for (i = 0; i < N; i++)
+    double **A;
+
+    if (!(A = allocate_matrix(n, n, 0)))
+        return NULL;
+
+    for (i = 0; i < n; i++)
     {
-        pSimilarityMatrix[i] = malloc(N * sizeof(double));
-        for (j = 0; j < N; j++)
+        for (j = 0; j < n; j++)
         {
             if (i == j)
             {
-                pSimilarityMatrix[i][j] = 0.0;
+                A[i][j] = 0.0;
             }
             else
             {
-                distance = calc_square_euclidian_distance(pListOfVec[i], pListOfVec[j], d);
-                pSimilarityMatrix[i][j] = exp(-distance/2.0);
+                distance = squared_euclidean_distance(vectors[i], vectors[j], d);
+                A[i][j] = exp(-distance / 2.0);
             }
         }
     }
-    return pSimilarityMatrix;
+    return A;
 }
 
-double **diagonal_matrix(double **pSimilarityMatrix, int N)
-{
-    int i, k, j;
-    double sum;
-    double **pDiagonalMatrix = malloc(N * sizeof(double *));
-
-    for (i = 0; i < N; i++)
-    {
-        pDiagonalMatrix[i] = malloc(N * sizeof(double));
-        for (j = 0; j < N; j++)
-        {
-            if (i == j)
-            {
-                sum = 0.0;
-                for (k = 0; k < N; k++)
-                {
-                    sum += pSimilarityMatrix[i][k];
-                }
-                pDiagonalMatrix[i][j] = sum;
-            }
-            else
-            {
-                pDiagonalMatrix[i][j] = 0.0;
-            }
-        }
-    }
-    return pDiagonalMatrix;
-}
-
-double **laplacian_matrix(double **pDiagonalMatrix, double **pSimilarityMatrix, int N)
+double **diagonal_matrix(double **A, int n)
 {
     int i, j;
-    double **pLaplacianMatrix = malloc(N * sizeof(double *));
+    double **D;
 
-    for (i = 0; i < N; i++)
+    if (!(D = allocate_matrix(n, n, 1)))
+        return NULL;
+
+    for (i = 0; i < n; i++)
     {
-        pLaplacianMatrix[i] = malloc(N * sizeof(double));
-        for (j = 0; j < N; j++)
+        for (j = 0; j < n; j++)
         {
-            pLaplacianMatrix[i][j] = pSimilarityMatrix[i][j]/sqrt(pDiagonalMatrix[i][i] * pDiagonalMatrix[j][j]);
+            D[i][i] += A[i][j];
         }
     }
-    return pLaplacianMatrix;
+
+    return D;
 }
 
-double **optimize_H_matrix(double **pH, double **pLaplacianMatrix, int N, int K)
+double **normalized_similarity_matrix(double **D, double **A, int n)
+{
+    int i, j;
+    double **W;
+    double denominator;
+
+    if (!(W = allocate_matrix(n, n, 1)))
+        return NULL;
+
+    for (i = 0; i < n; i++)
+    {
+        for (j = 0; j < n; j++)
+        {
+            denominator = sqrt(D[i][i] * D[j][j]);
+            if (denominator == 0.0)
+            {
+                free_matrix(W, n);
+                return NULL;
+            }
+            W[i][j] = A[i][j] / denominator;
+        }
+    }
+    return W;
+}
+
+double **optimize_H_matrix(double **H, double **W, int n, int k)
 {
     int i, j, t;
-    double ratio;
     double diff = 0.0;
-    double **pH_new, **pH_old_transpose, **pNumerator, **pDenominator, **temp;
-    double **pH_old = malloc(N * sizeof(double *));
+    double **H_new, **H_old;
 
-    for (i = 0; i < N; i++)
+    if (!(H_old = allocate_matrix(n, k, 1)))
+        return NULL;
+
+    for (i = 0; i < n; i++)
     {
-        pH_old[i] = malloc(K * sizeof(double));
-        for (j = 0; j < K; j++)
+        for (j = 0; j < k; j++)
         {
-            pH_old[i][j] = pH[i][j];
+            H_old[i][j] = H[i][j];
         }
     }
 
     for (t = 0; t < ITER; t++)
     {
-        pH_new = malloc(N * sizeof(double *));
-        for (i = 0; i < N; i++)
+        H_new = calculate_new_H_matrix(H_old, W, n, k);
+
+        if (H_new == NULL)
         {
-            pH_new[i] = malloc(K * sizeof(double));
+            free_matrix(H_old, n);
+            return NULL;
         }
 
-        pH_old_transpose = transpose_matrix(pH_old, N, K);
-        pNumerator = multiply_matrices(pLaplacianMatrix, pH_old, N, N, K);
-        temp = multiply_matrices(pH_old, pH_old_transpose, N, K, N);
-        pDenominator = multiply_matrices(pDenominator, pH_old, N, N, K);
+        diff = squared_frobenius_norm(H_new, H_old, n, k);
 
-        
+        free_matrix(H_old, n);
 
-        for (i = 0; i < N; i++)
-        {
-            for (j = 0; j < K; j++)
-            {
-                ratio = 0.0;
-                if (pDenominator[i][j] != 0.0){
-                    ratio = pNumerator[i][j] / pDenominator[i][j];
-                    pH_new[i][j] = pH_old[i][j] * (1 - BETA + BETA * ratio);
-                }
-            }
-        }
-
-        diff = calc_square_frobenius_norm(pH_new, pH_old, N, K);
-
-        free_matrix(pNumerator, N);
-        free_matrix(pDenominator, N);
-        free_matrix(temp, N);
-
-        free_matrix(pH_old_transpose, K);
-        free_matrix(pH_old, N);
-        pH_old = pH_new;
+        H_old = H_new;
 
         if (diff < EPSILON || t == ITER - 1)
-        {
             break;
-        }
     }
 
-    return pH_old;
+    return H_old;
 }
 
-double **multiply_matrices(double **A, double **B, int rowsA, int colsA, int colsB)
+static double **calculate_new_H_matrix(double **H_old, double **W, int n, int k)
+{
+    double **H_new = NULL, **H_old_transpose = NULL, **numerator = NULL, **denominator = NULL, **temp = NULL;
+
+    if (!(H_new = allocate_matrix(n, k, 1)))
+        return NULL;
+
+    if (!(H_old_transpose = transpose_matrix(H_old, n, k)))
+        goto error;
+
+    if (!(numerator = multiply_matrices(W, H_old, n, n, k)))
+        goto error;
+
+    if (!(temp = multiply_matrices(H_old, H_old_transpose, n, k, n)))
+        goto error;
+
+    if (!(denominator = multiply_matrices(temp, H_old, n, n, k)))
+        goto error;
+
+    fill_new_H(H_new, H_old, numerator, denominator, n, k);
+
+    goto cleanup;
+
+error:
+    free_matrix(H_new, n);
+    H_new = NULL;
+
+cleanup:
+    free_matrix(numerator, n);
+    free_matrix(denominator, n);
+    free_matrix(temp, n);
+    free_matrix(H_old_transpose, k);
+
+    return H_new;
+}
+
+static void fill_new_H(double **H_new, double **H_old, double **numerator, double **denominator, int n, int k){
+    int i, j;
+    double ratio;
+    for (i = 0; i < n; i++)
+    {
+        for (j = 0; j < k; j++)
+        {
+            ratio = 0.0;
+            if (denominator[i][j] != 0.0)
+            {
+                ratio = numerator[i][j] / denominator[i][j];
+                H_new[i][j] = H_old[i][j] * (1 - BETA + BETA * ratio);
+            }
+        }
+    }
+}
+
+static double **multiply_matrices(double **A, double **B, int rowsA, int colsA, int colsB)
 {
     int i, j, k;
-    double **C = malloc(rowsA * sizeof(double *));
+    double **C;
+
+    if (!(C = allocate_matrix(rowsA, colsB, 1)))
+        return NULL;
 
     for (i = 0; i < rowsA; i++)
     {
-        C[i] = malloc(colsB * sizeof(double));
         for (j = 0; j < colsB; j++)
         {
-            C[i][j] = 0.0;
             for (k = 0; k < colsA; k++)
             {
                 C[i][j] += A[i][k] * B[k][j];
@@ -238,14 +332,15 @@ double **multiply_matrices(double **A, double **B, int rowsA, int colsA, int col
     return C;
 }
 
-double **transpose_matrix(double **A, int rows, int cols)
+static double **transpose_matrix(double **A, int rows, int cols)
 {
     int i, j;
-    double **B = malloc(cols * sizeof(double *));
+    double **B;
+    if (!(B = allocate_matrix(cols, rows, 0)))
+        return NULL;
 
     for (i = 0; i < cols; i++)
     {
-        B[i] = malloc(rows * sizeof(double));
         for (j = 0; j < rows; j++)
         {
             B[i][j] = A[j][i];
@@ -254,7 +349,7 @@ double **transpose_matrix(double **A, int rows, int cols)
     return B;
 }
 
-double calc_square_frobenius_norm(double **A, double **B, int rows, int cols)
+static double squared_frobenius_norm(double **A, double **B, int rows, int cols)
 {
     int i, j;
     double sum = 0.0;
@@ -269,7 +364,7 @@ double calc_square_frobenius_norm(double **A, double **B, int rows, int cols)
     return sum;
 }
 
-double calc_square_euclidian_distance(double *vec1, double *vec2, int d)
+static double squared_euclidean_distance(double *vec1, double *vec2, int d)
 {
     int i;
     double sum = 0.0;
@@ -281,76 +376,142 @@ double calc_square_euclidian_distance(double *vec1, double *vec2, int d)
     return sum;
 }
 
-double **read_vectors_from_file(FILE *file, int *N, int *d)
+static double **read_vectors_from_file(FILE *file, int *n, int *d)
 {
     size_t len = 0;
-    char *pLine = NULL, *token;
-    int capacity = 1, capacityVecList = 1, current_d = 0;
-    double *pVector = NULL, **temp;
-    double **pListOfVec = malloc(capacityVecList * sizeof(double *));
+    char *line = NULL;
+    int capacity_vec_list = 1;
+    double *vector = NULL;
+    double **vectors = NULL;
 
-    while ((getline(&pLine, &len, file)) != -1)
-    {
-        current_d = 0;
-        pVector = malloc(capacity * sizeof(double));
-        token = strtok(pLine, ",");
-        temp = NULL;
-
-        /* initialize the vector */
-        while (token != NULL)
-        {
-            if (current_d == capacity)
-            {
-                capacity *= 2;
-                pVector = safe_realloc(pVector, capacity * sizeof(double));
-            }
-            pVector[current_d] = atof(token);
-            current_d++;
-            token = strtok(NULL, ",");
-        }
-
-        if (*d == 0)
-        {
-            *d = current_d;
-        }
-        if (*N == capacityVecList)
-        {
-            capacityVecList *= 2;
-            temp = safe_realloc(pListOfVec, capacityVecList * sizeof(double *));
-            pListOfVec = temp;
-        }
-        pListOfVec[*N] = safe_realloc(pVector, *d * sizeof(double));
-        (*N)++;
-    }
-
-    free(pLine);
-    free(token);
-    return pListOfVec;
-}
-
-void *safe_realloc(void *pointer, size_t new_size)
-{
-    void *new_pointer = realloc(pointer, new_size);
-
-    if (new_pointer == NULL)
-    {
-        fprintf(stderr, "An Error Has Occured\n");
-        free(pointer);
-        exit(1);
+    if (!(vectors = malloc(capacity_vec_list * sizeof(double *))))
         return NULL;
+
+    while ((getline(&line, &len, file)) != -1)
+    {
+        if (!(vector = parse_vector(line, d)))
+            goto error;
+
+        if (*n == capacity_vec_list)
+        {
+            capacity_vec_list *= 2;
+            if (!(resize_matrix(&vectors, capacity_vec_list)))
+                goto error;
+        }
+        vectors[*n] = vector;
+        (*n)++;
     }
-    return new_pointer;
+    if (*n == 0)
+        goto error;
+    goto no_error;
+
+error:
+    fprintf(stderr, "An Error Has Occurred\n");
+    free_matrix(vectors, *n);
+    vectors = NULL;
+    free(vector);
+
+no_error:
+    free(line);
+    return vectors;
 }
 
-void free_matrix(double **matrix, int n){
+static double *parse_vector(const char *line, int *d)
+{
+    double *vector = NULL;
+    char *token, *line_copy;
+    int capacity = 1, current_d = 0;
+
+    if (!(line_copy = strdup(line)))
+        return NULL;
+
+    if (!(vector = malloc(capacity * sizeof(double))))
+        goto error;
+
+    token = strtok(line_copy, ",");
+
+    while (token != NULL)
+    {
+        if (current_d == capacity)
+        {
+            capacity *= 2;
+            if (!(resize_vector(&vector, capacity)))
+                goto error;
+        }
+        vector[current_d] = atof(token);
+        current_d++;
+        token = strtok(NULL, ",");
+    }
+
+    if (*d == 0)
+        *d = current_d;
+    goto no_error;
+
+error:
+    free(vector);
+    vector = NULL;
+
+no_error:
+    free(line_copy);
+    return vector;
+}
+
+static int resize_matrix(double ***matrix, size_t new_rows)
+{
+    double **new_matrix = realloc(*matrix, new_rows * sizeof(double *));
+    if (new_matrix == NULL)
+        return 0;
+    *matrix = new_matrix;
+    return 1;
+}
+
+static int resize_vector(double **vector, size_t new_size)
+{
+    double *new_vector = realloc(*vector, new_size * sizeof(double));
+    if (new_vector == NULL)
+        return 0;
+    *vector = new_vector;
+    return 1;
+}
+
+double **allocate_matrix(int rows, int cols, int zero_initialize)
+{
+    double **matrix = malloc(rows * sizeof(double *));
+    int i;
+    if (matrix == NULL)
+        return NULL;
+
+    for (i = 0; i < rows; i++)
+    {
+        if (zero_initialize)
+        {
+            matrix[i] = calloc(cols, sizeof(double));
+        }
+        else
+        {
+            matrix[i] = malloc(cols * sizeof(double));
+        }
+
+        if (matrix[i] == NULL)
+        {
+            free_matrix(matrix, i);
+            return NULL;
+        }
+    }
+    return matrix;
+}
+
+void free_matrix(double **matrix, int n)
+{
     int i;
 
-    if (matrix == NULL){
+    if (matrix == NULL)
+    {
         return;
     }
     for (i = 0; i < n; i++)
-        {
-            free(matrix[i]);
-        }
+    {
+        free(matrix[i]);
+    }
     free(matrix);
 }

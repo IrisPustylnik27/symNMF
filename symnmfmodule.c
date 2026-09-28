@@ -1,191 +1,164 @@
-
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "symnmf.h"
 
-double **python_list_to_matrix_array(PyObject *pyList, int N, int d);
-PyObject *matrix_array_to_python_list(double **matrix, int N, int d);
-void free_matrix(double **matrix, int n);
+static double **python_list_to_matrix_array(PyObject *pyList, int n, int d);
+static PyObject *matrix_array_to_python_list(double **matrix, int n, int d);
+static double **parsing_PyObject_to_matrix_array(PyObject *py_X, int *n, int *d);
 
-static PyObject *symnmf_wrapper (PyObject *self, PyObject *args){
+static PyObject *symnmf_wrapper(PyObject *self, PyObject *args)
+{
+    (void)self; // Unused parameter
 
-    PyObject *py_W, *py_H;
-    double **W;
-    double **H;
-    double **result;
-    int n, k;
+    PyObject *py_W = NULL, *py_H = NULL;
+    double **W = NULL, **H = NULL, **result = NULL;
+    int n = 0, k = 0, W_rows = 0, W_col = 0;
 
     if (!PyArg_ParseTuple(args, "OO", &py_H, &py_W))
-    {
         return NULL;
-    }
 
-    n = (int)PyList_Size(py_W);
-    k = (int)PyList_Size(PyList_GetItem(py_H, 0));
-
-    W = python_list_to_matrix_array(py_W, n, n);
-    if (W == NULL)
-    {
-        return NULL;
-    }
-
-    H = python_list_to_matrix_array(py_H, n, k);
+    H = parsing_PyObject_to_matrix_array(py_H, &n, &k);
     if (H == NULL)
-    {
-        free_matrix(W, n);
         return NULL;
+
+    if (!(W = parsing_PyObject_to_matrix_array(py_W, &W_rows, &W_col)))
+        goto error;
+
+    if (W_rows != n || W_col != n)
+    {
+        PyErr_SetString(PyExc_ValueError, "An Error Has Occurred");
+        goto cleanup;
     }
 
-    result = optimize_H_matrix(H, W, n, k);
-
-    if(result == NULL)
-    {
-        free_matrix(W, n);
-        free_matrix(H, n);
-        return NULL;
-    }
+    if (!(result = optimize_H_matrix(H, W, n, k)))
+        goto error;
 
     py_H = matrix_array_to_python_list(result, n, k);
+    goto cleanup;
 
-    free_matrix(W, n);
+error:
+    if (!PyErr_Occurred())
+    {
+        PyErr_SetString(PyExc_MemoryError, "An Error Has Occurred");
+    }
+    py_H = NULL;
+
+cleanup:
     free_matrix(H, n);
+    free_matrix(W, W_rows);
     free_matrix(result, n);
 
     return py_H;
-
 }
 
-static PyObject *sym_wrapper (PyObject *self, PyObject *args){
-    
-    PyObject *py_X, *py_A;
-    double **X;
-    double **result;
-    int n, d;
+static PyObject *sym_wrapper(PyObject *self, PyObject *args)
+{
+    (void)self; // Unused parameter
+
+    PyObject *py_X = NULL, *py_A = NULL;
+    double **X = NULL, **result = NULL;
+    int n = 0, d = 0;
 
     if (!PyArg_ParseTuple(args, "O", &py_X))
-    {
         return NULL;
-    }
 
-    n = (int)PyList_Size(py_X);
-    d = (int)PyList_Size(PyList_GetItem(py_X, 0));
+    if (!(X = parsing_PyObject_to_matrix_array(py_X, &n, &d)))
+        return NULL;
 
-    X = python_list_to_matrix_array(py_X, n, d);
-    if (X == NULL)
-    {
-        return NULL;
-    }
-    result = similarity_matrix(X, n, d);
-    if (result == NULL)
-    {
-        free_matrix(X, n);
-        return NULL;
-    }
+    if (!(result = similarity_matrix(X, n, d)))
+        goto error;
 
     py_A = matrix_array_to_python_list(result, n, n);
+    goto cleanup;
 
+error:
+    if (!PyErr_Occurred())
+    {
+        PyErr_SetString(PyExc_MemoryError, "An Error Has Occurred");
+    }
+    py_A = NULL;
+
+cleanup:
     free_matrix(X, n);
     free_matrix(result, n);
 
     return py_A;
-    
 }
 
-static PyObject *ddg_wrapper (PyObject *self, PyObject *args){
-    
-    PyObject *py_X, *py_D;
-    double **A, **X;
-    double **result;
-    int n, d;
+static PyObject *ddg_wrapper(PyObject *self, PyObject *args)
+{
+    (void)self; // Unused parameter
+
+    PyObject *py_X = NULL, *py_D = NULL;
+    double **A = NULL, **X = NULL, **result = NULL;
+    int n = 0, d = 0;
 
     if (!PyArg_ParseTuple(args, "O", &py_X))
-    {
         return NULL;
-    }
 
-    n = (int)PyList_Size(py_X);
-    d = (int)PyList_Size(PyList_GetItem(py_X, 0));
-
-    X = python_list_to_matrix_array(py_X, n, d);
-    if (X == NULL)
-    {
+    if (!(X = parsing_PyObject_to_matrix_array(py_X, &n, &d)))
         return NULL;
-    }
 
-    A = similarity_matrix(X, n, d);
-    if (A == NULL)
-    {
-        free_matrix(X, n);
-        return NULL;
-    }
+    if (!(A = similarity_matrix(X, n, d)))
+        goto error;
 
-    result = diagonal_matrix(A, n);
-    if (result == NULL)
-    {
-        free_matrix(X, n);
-        free_matrix(A, n);
-        return NULL;
-    }
+    if (!(result = diagonal_matrix(A, n)))
+        goto error;
 
     py_D = matrix_array_to_python_list(result, n, n);
+    goto cleanup;
 
+error:
+    if (!PyErr_Occurred())
+    {
+        PyErr_SetString(PyExc_MemoryError, "An Error Has Occurred");
+    }
+    py_D = NULL;
+
+cleanup:
     free_matrix(X, n);
     free_matrix(A, n);
     free_matrix(result, n);
 
-
     return py_D;
-    
 }
 
-static PyObject *norm_wrapper (PyObject *self, PyObject *args){
-    
-    PyObject *py_X, *py_W;
-    double **A, **D, **X;
-    double **result;
-    int n, d;
+static PyObject *norm_wrapper(PyObject *self, PyObject *args)
+{
+    (void)self; // Unused parameter
+
+    PyObject *py_X = NULL, *py_W = NULL;
+    double **A = NULL, **D = NULL, **X = NULL, **result = NULL;
+    int n = 0, d = 0;
 
     if (!PyArg_ParseTuple(args, "O", &py_X))
-    {
         return NULL;
-    }
 
-    n = (int)PyList_Size(py_X);
-    d = (int)PyList_Size(PyList_GetItem(py_X, 0));
-
-    X = python_list_to_matrix_array(py_X, n, d);
-    if (X == NULL)
-    {
+    if (!(X = parsing_PyObject_to_matrix_array(py_X, &n, &d)))
         return NULL;
-    }
 
-    A = similarity_matrix(X, n, d);
-    if (A == NULL)
-    {
-        free_matrix(X, n);
-        return NULL;
-    }
+    if (!(A = similarity_matrix(X, n, d)))
+        goto error;
 
-    D = diagonal_matrix(A, n);
-    if (D == NULL)
-    {
-        free_matrix(X, n);
-        free_matrix(A, n);
-        return NULL;
-    }
+    if (!(D = diagonal_matrix(A, n)))
+        goto error;
 
-    result = laplacian_matrix(D, A, n);
-    if (result == NULL)
-    {
-        free_matrix(X, n);
-        free_matrix(A, n);
-        free_matrix(D, n);
-        return NULL;
-    }
+    if (!(result = normalized_similarity_matrix(D, A, n)))
+        goto error;
+
     py_W = matrix_array_to_python_list(result, n, n);
+    goto cleanup;
 
+error:
+    if (!PyErr_Occurred())
+    {
+        PyErr_SetString(PyExc_MemoryError, "An Error Has Occurred");
+    }
+    py_W = NULL;
+
+cleanup:
     free_matrix(X, n);
     free_matrix(A, n);
     free_matrix(D, n);
@@ -194,15 +167,12 @@ static PyObject *norm_wrapper (PyObject *self, PyObject *args){
     return py_W;
 }
 
-
 static PyMethodDef symnmfMethods[] = {
     {"symnmf", symnmf_wrapper, METH_VARARGS, "SymNMF wrapper"},
     {"sym", sym_wrapper, METH_VARARGS, "Sym wrapper"},
     {"ddg", ddg_wrapper, METH_VARARGS, "DDG wrapper"},
     {"norm", norm_wrapper, METH_VARARGS, "Norm wrapper"},
-    {NULL, NULL, 0, NULL}
-};
-
+    {NULL, NULL, 0, NULL}};
 
 static struct PyModuleDef symnmfModule = {
     PyModuleDef_HEAD_INIT,
@@ -222,94 +192,112 @@ PyMODINIT_FUNC PyInit_symnmfmodule(void)
     return m;
 }
 
-double **python_list_to_matrix_array(PyObject *pyList, int N, int d)
+static double **parsing_PyObject_to_matrix_array(PyObject *py_X, int *n, int *d)
 {
-    double **pList = NULL;
-    int i, j;
+    double **X;
 
-    pList = malloc(N * sizeof(double *));
-    if (pList == NULL)
+    if (!PyList_Check(py_X))
     {
-        PyErr_SetString(PyExc_MemoryError, "An Error Has Occurred");
-        return NULL; // Return NULL if memory allocation fails
+        PyErr_SetString(PyExc_TypeError, "An Error Has Occurred");
+        return NULL;
     }
 
-    for (i = 0; i < N; i++)
+    *n = (int)PyList_Size(py_X);
+    if (n == 0)
     {
-        PyObject *vector = PyList_GetItem(pyList, i);
+        PyErr_SetString(PyExc_ValueError, "An Error Has Occurred");
+        return NULL;
+    }
+
+    if (!PyList_Check(PyList_GetItem(py_X, 0)))
+    {
+        PyErr_SetString(PyExc_TypeError, "An Error Has Occurred");
+        return NULL;
+    }
+    *d = (int)PyList_Size(PyList_GetItem(py_X, 0));
+    if (d <= 0)
+    {
+        PyErr_SetString(PyExc_ValueError, "An Error Has Occurred");
+        return NULL;
+    }
+
+    X = python_list_to_matrix_array(py_X, *n, *d);
+
+    return X;
+}
+
+static double **python_list_to_matrix_array(PyObject *py_list, int n, int d)
+{
+    double **list = NULL;
+    PyObject *vector, *item;
+    int i, j;
+
+    if (!(list = allocate_matrix(n, d, 0)))
+    {
+        PyErr_SetString(PyExc_MemoryError, "An Error Has Occurred");
+        return NULL;
+    }
+
+    for (i = 0; i < n; i++)
+    {
+        vector = PyList_GetItem(py_list, i);
         if (vector == NULL || !PyList_Check(vector))
-            {
-                PyErr_SetString(PyExc_TypeError, "An Error Has Occurred");
-                free_matrix(pList, i);
-                return NULL; 
-            }
-
-            if ((int)PyList_Size(vector) != d)
-            {
-                PyErr_SetString(PyExc_ValueError, "An Error Has Occurred");
-                free_matrix(pList, i);
-                return NULL; 
-            }
-        
-        pList[i] = malloc(d * sizeof(double));
-        if (pList[i] == NULL)
         {
-            PyErr_SetString(PyExc_MemoryError, "An Error Has Occurred");
-            free_matrix(pList, i);
-
-            return NULL; // Return NULL if memory allocation fails
+            PyErr_SetString(PyExc_TypeError, "An Error Has Occurred");
+            goto error;
         }
+
+        if ((int)PyList_Size(vector) != d)
+        {
+            PyErr_SetString(PyExc_ValueError, "An Error Has Occurred");
+            goto error;
+        }
+
         for (j = 0; j < d; j++)
         {
-            PyObject *item = PyList_GetItem(vector, j);
-
-            if (item == NULL)
+            if (!(item = PyList_GetItem(vector, j)))
             {
                 PyErr_SetString(PyExc_TypeError, "An Error Has Occurred");
-                free_matrix(pList, i+1);
-                return NULL; 
+                goto error;
             }
 
-            pList[i][j] = PyFloat_AsDouble(item);
+            list[i][j] = PyFloat_AsDouble(item);
 
             if (PyErr_Occurred())
             {
                 PyErr_SetString(PyExc_TypeError, "An Error Has Occurred");
-                free_matrix(pList, i+1);
-                return NULL; // Return NULL if conversion fails
+                goto error;
             }
         }
     }
-    return pList;
+    goto no_error;
+
+error:
+    free_matrix(list, n);
+    list = NULL;
+
+no_error:
+    return list;
 }
 
-PyObject *matrix_array_to_python_list(double **matrix, int N, int d)
+static PyObject *matrix_array_to_python_list(double **matrix, int n, int d)
 {
     int i, j;
+    PyObject *outputList, *item, *vectorList;
 
-    PyObject *outputList = PyList_New(N);
-    if (outputList == NULL)
+    if (!(outputList = PyList_New(n)))
+        return NULL;
+
+    for (i = 0; i < n; i++)
     {
-        PyErr_SetString(PyExc_MemoryError, "An Error Has Occurred");
-        return NULL; // Return NULL if memory allocation fails
-    }
-
-    PyObject *item;
-    PyObject *vectorList;
-
-    for (i = 0; i < N; i++)
-    {
-        vectorList = PyList_New(d);
-        if (vectorList == NULL)
+        if (!(vectorList = PyList_New(d)))
         {
-            PyErr_SetString(PyExc_MemoryError, "An Error Has Occurred");
             Py_DECREF(outputList);
             return NULL;
         }
         for (j = 0; j < d; j++)
         {
-            item = PyFloat_FromDouble(matrix[i][j]);
-            if (item == NULL)
+            if (!(item = PyFloat_FromDouble(matrix[i][j])))
             {
                 PyErr_SetString(PyExc_MemoryError, "An Error Has Occurred");
                 Py_DECREF(outputList);
@@ -322,16 +310,3 @@ PyObject *matrix_array_to_python_list(double **matrix, int N, int d)
     }
     return outputList;
 }
-
-void free_matrix(double **matrix, int n){
-    int i;
-    if (matrix == NULL){
-        return;
-    }
-    for (i = 0; i < n; i++)
-        {
-            free(matrix[i]);
-        }
-        free(matrix);
-}
-

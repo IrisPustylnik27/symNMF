@@ -1,5 +1,4 @@
 from math import sqrt
-import pandas as pd
 import symnmfmodule
 import numpy as np
 import sys
@@ -24,9 +23,7 @@ def main():
         sys.exit(1)
 
     try: 
-        # read data from file
-        df = pd.read_csv(file_name, header=None)
-        vectors = df.values.tolist()
+        vectors = np.loadtxt(file_name, delimiter = ',').tolist()
         N = len(vectors)
         if N == 0:
             print("An Error Has Occurred")
@@ -63,8 +60,9 @@ def main():
     
 
 def fit(X, k):
-    N = len(X)
-    laplacian_matrix = symnmfmodule.norm(X)
+    vectors = np.asarray(X, dtype=float).tolist()
+    N = len(vectors)
+    laplacian_matrix = symnmfmodule.norm(vectors)
     avg = np.array(laplacian_matrix).mean()
     low, high = 0, 2*sqrt(avg/k)
     decomposition_matrix = np.random.uniform(low, high, size=(N, k)).tolist()
