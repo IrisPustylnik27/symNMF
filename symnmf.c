@@ -7,20 +7,15 @@
 #include <math.h>
 #include <string.h>
 #include "symnmf.h"
+#include "matrix.h"
 
 static void print_matrix(double **matrix, int rows, int cols);
-
-static double **multiply_matrices(double **A, double **B, int rowsA, int colsA, int colsB);
 
 static double **calculate_new_H_matrix(double **pH_old, double **norm_matrix, int n, int K);
 
 static int is_valid_goal(const char *goal);
 
 static int run_goal(const char *goal, double **vectors, int n, int d);
-
-static double **transpose_matrix(double **A, int rows, int cols);
-
-static double squared_frobenius_norm(double **A, double **B, int rows, int cols);
 
 static double squared_euclidean_distance(double *vec1, double *vec2, int d);
 
@@ -40,9 +35,7 @@ static int is_blank_line(const char *line);
 
 static int resize_if_needed(double ***vectors, int *capacity_vec_list, int n);
 
-static void copy_matrix(double **old_matrix, double **new_matrix, int n, int k);
-
-    int main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     char *goal = NULL, *file_name = NULL;
     double **vectors = NULL;
@@ -256,17 +249,7 @@ double **optimize_H_matrix(double **H, double **W, int n, int k)
     return H_old;
 }
 
-static void copy_matrix(double **old_matrix, double **new_matrix, int n, int k)
-{
-    int i, j;
-    for (i = 0; i < n; i++)
-    {
-        for (j = 0; j < k; j++)
-        {
-            new_matrix[i][j] = old_matrix[i][j];
-        }
-    }
-}
+
 
 static double **calculate_new_H_matrix(double **H_old, double **W, int n, int k)
 {
@@ -323,60 +306,6 @@ static void fill_new_H(double **H_new, double **H_old, double **numerator, doubl
     }
 }
 
-static double **multiply_matrices(double **A, double **B, int rowsA, int colsA, int colsB)
-{
-    int i, j, k;
-    double **C;
-
-    if (!(C = allocate_matrix(rowsA, colsB, 1)))
-        return NULL;
-
-    for (i = 0; i < rowsA; i++)
-    {
-        for (j = 0; j < colsB; j++)
-        {
-            for (k = 0; k < colsA; k++)
-            {
-                C[i][j] += A[i][k] * B[k][j];
-            }
-        }
-    }
-    return C;
-}
-
-static double **transpose_matrix(double **A, int rows, int cols)
-{
-    int i, j;
-    double **B;
-
-    if (!(B = allocate_matrix(cols, rows, 0)))
-        return NULL;
-
-    for (i = 0; i < cols; i++)
-    {
-        for (j = 0; j < rows; j++)
-        {
-            B[i][j] = A[j][i];
-        }
-    }
-    return B;
-}
-
-static double squared_frobenius_norm(double **A, double **B, int rows, int cols)
-{
-    int i, j;
-    double sum = 0.0;
-
-    for (i = 0; i < rows; i++)
-    {
-        for (j = 0; j < cols; j++)
-        {
-            sum += (A[i][j] - B[i][j]) * (A[i][j] - B[i][j]);
-        }
-    }
-    return sum;
-}
-
 static double squared_euclidean_distance(double *vec1, double *vec2, int d)
 {
     int i;
@@ -422,6 +351,7 @@ static double **read_vectors_from_file(FILE *file, int *n, int *d)
 error:
     free_matrix(vectors, *n);
     free(vector);
+    free(line);
     return NULL;
 }
 
@@ -516,49 +446,4 @@ static int resize_vector(double **vector, size_t new_size)
         return 0;
     *vector = new_vector;
     return 1;
-}
-
-double **allocate_matrix(int rows, int cols, int zero_initialize)
-{
-    double **matrix;
-    int i;
-
-    if (rows <= 0 || cols <= 0)
-        return NULL;
-    if (!(matrix = malloc(rows * sizeof(double *))))
-        return NULL;
-
-    for (i = 0; i < rows; i++)
-    {
-        if (zero_initialize)
-        {
-            matrix[i] = calloc(cols, sizeof(double));
-        }
-        else
-        {
-            matrix[i] = malloc(cols * sizeof(double));
-        }
-
-        if (matrix[i] == NULL)
-        {
-            free_matrix(matrix, i);
-            return NULL;
-        }
-    }
-    return matrix;
-}
-
-void free_matrix(double **matrix, int n)
-{
-    int i;
-
-    if (matrix == NULL)
-    {
-        return;
-    }
-    for (i = 0; i < n; i++)
-    {
-        free(matrix[i]);
-    }
-    free(matrix);
 }

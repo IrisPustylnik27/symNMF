@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "symnmf.h"
+#include "matrix.h"
 
 static double **python_list_to_matrix_array(PyObject *pyList, int n, int d);
 static PyObject *matrix_array_to_python_list(double **matrix, int n, int d);
@@ -137,7 +138,7 @@ static PyObject *norm_wrapper(PyObject *self, PyObject *args)
     if (!(X = parsing_PyObject_to_matrix_array(py_X, &n, &d)))
         return NULL;
 
-    if(!(result = make_W_matrix(X, n, d)))
+    if (!(result = make_W_matrix(X, n, d)))
         goto error;
 
     py_W = matrix_array_to_python_list(result, n, n);
@@ -176,6 +177,8 @@ error:
     result = NULL;
 
 no_error:
+    free_matrix(A, n);
+    free_matrix(D, n);
     return result;
 }
 
