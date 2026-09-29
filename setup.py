@@ -5,7 +5,8 @@ module = Extension(
     sources=[
         'symnmfmodule.c',  
         'symnmf.c',  
-        'matrix.c'      
+        'matrix.c',
+        'input.c'   
     ]
 )
 
