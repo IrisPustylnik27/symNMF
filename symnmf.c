@@ -32,12 +32,17 @@ static int resize_matrix(double ***matrix, size_t new_rows);
 
 static double *parse_vector(const char *line, int *d);
 
-static double **load_vectors(char *file_name, int n, int d);
+static double **load_vectors(char *file_name, int *n, int *d);
 
-static void fill_new_H(double **H_new, double **H_old, double **numerator, double **denominator, int n, int k)ж
+static void fill_new_H(double **H_new, double **H_old, double **numerator, double **denominator, int n, int k);
 
+static int is_blank_line(const char *line);
 
-int main(int argc, char *argv[])
+static int resize_if_needed(double ***vectors, int *capacity_vec_list, int n);
+
+static void copy_matrix(double **old_matrix, double **new_matrix, int n, int k);
+
+    int main(int argc, char *argv[])
 {
     char *goal = NULL, *file_name = NULL;
     double **vectors = NULL;
@@ -57,7 +62,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if(!(vectors = load_vectors(file_name, &n, &d))){
+    if (!(vectors = load_vectors(file_name, &n, &d)))
+    {
         return 1;
     }
 
@@ -72,7 +78,8 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-static double **load_vectors(char *file_name, int *n, int *d){
+static double **load_vectors(char *file_name, int *n, int *d)
+{
     FILE *file = NULL;
     double **vectors = NULL;
     if (!(file = fopen(file_name, "r")))
@@ -220,25 +227,18 @@ double **normalized_similarity_matrix(double **D, double **A, int n)
 
 double **optimize_H_matrix(double **H, double **W, int n, int k)
 {
-    int i, j, t;
+    int t;
     double diff = 0.0;
     double **H_new, **H_old;
 
     if (!(H_old = allocate_matrix(n, k, 1)))
         return NULL;
 
-    for (i = 0; i < n; i++)
-    {
-        for (j = 0; j < k; j++)
-        {
-            H_old[i][j] = H[i][j];
-        }
-    }
+    copy_matrix(H, H_old, n, k);
 
     for (t = 0; t < ITER; t++)
     {
         H_new = calculate_new_H_matrix(H_old, W, n, k);
-
         if (H_new == NULL)
         {
             free_matrix(H_old, n);
@@ -246,16 +246,26 @@ double **optimize_H_matrix(double **H, double **W, int n, int k)
         }
 
         diff = squared_frobenius_norm(H_new, H_old, n, k);
-
         free_matrix(H_old, n);
-
         H_old = H_new;
 
-        if (diff < EPSILON || t == ITER - 1)
+        if (diff < EPSILON)
             break;
     }
 
     return H_old;
+}
+
+static void copy_matrix(double **old_matrix, double **new_matrix, int n, int k)
+{
+    int i, j;
+    for (i = 0; i < n; i++)
+    {
+        for (j = 0; j < k; j++)
+        {
+            new_matrix[i][j] = old_matrix[i][j];
+        }
+    }
 }
 
 static double **calculate_new_H_matrix(double **H_old, double **W, int n, int k)
@@ -294,9 +304,11 @@ cleanup:
     return H_new;
 }
 
-static void fill_new_H(double **H_new, double **H_old, double **numerator, double **denominator, int n, int k){
+static void fill_new_H(double **H_new, double **H_old, double **numerator, double **denominator, int n, int k)
+{
     int i, j;
     double ratio;
+
     for (i = 0; i < n; i++)
     {
         for (j = 0; j < k; j++)
@@ -336,6 +348,7 @@ static double **transpose_matrix(double **A, int rows, int cols)
 {
     int i, j;
     double **B;
+
     if (!(B = allocate_matrix(cols, rows, 0)))
         return NULL;
 
@@ -389,31 +402,63 @@ static double **read_vectors_from_file(FILE *file, int *n, int *d)
 
     while ((getline(&line, &len, file)) != -1)
     {
+        if (is_blank_line(line))
+            continue;
         if (!(vector = parse_vector(line, d)))
             goto error;
-
-        if (*n == capacity_vec_list)
-        {
-            capacity_vec_list *= 2;
-            if (!(resize_matrix(&vectors, capacity_vec_list)))
-                goto error;
-        }
+        if (!resize_if_needed(&vectors, &capacity_vec_list, *n))
+            goto error;
         vectors[*n] = vector;
+        vector = NULL;
         (*n)++;
     }
-    if (*n == 0)
+
+    if (ferror(file) || *n == 0)
         goto error;
-    goto no_error;
 
-error:
-    fprintf(stderr, "An Error Has Occurred\n");
-    free_matrix(vectors, *n);
-    vectors = NULL;
-    free(vector);
-
-no_error:
     free(line);
     return vectors;
+
+error:
+    free_matrix(vectors, *n);
+    free(vector);
+    return NULL;
+}
+
+static int resize_if_needed(double ***vectors, int *capacity_vec_list, int n)
+{
+    int new_capacity;
+
+    if (n < *capacity_vec_list)
+        return 1;
+
+    new_capacity = 2 * *capacity_vec_list;
+    if (!(resize_matrix(vectors, new_capacity)))
+        return 0;
+    *capacity_vec_list = new_capacity;
+
+    return 1;
+}
+
+static int is_blank_line(const char *line)
+{
+    int i = 0;
+
+    if (line == NULL)
+        return 1;
+
+    while (line[i] != '\0')
+    {
+        if (line[i] != ' ' &&
+            line[i] != '\t' &&
+            line[i] != '\n' &&
+            line[i] != '\r')
+        {
+            return 0;
+        }
+        i++;
+    }
+    return 1;
 }
 
 static double *parse_vector(const char *line, int *d)
@@ -429,7 +474,6 @@ static double *parse_vector(const char *line, int *d)
         goto error;
 
     token = strtok(line_copy, ",");
-
     while (token != NULL)
     {
         if (current_d == capacity)
@@ -476,9 +520,12 @@ static int resize_vector(double **vector, size_t new_size)
 
 double **allocate_matrix(int rows, int cols, int zero_initialize)
 {
-    double **matrix = malloc(rows * sizeof(double *));
+    double **matrix;
     int i;
-    if (matrix == NULL)
+
+    if (rows <= 0 || cols <= 0)
+        return NULL;
+    if (!(matrix = malloc(rows * sizeof(double *))))
         return NULL;
 
     for (i = 0; i < rows; i++)
