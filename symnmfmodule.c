@@ -6,8 +6,12 @@
 #include "matrix.h"
 
 static double **python_list_to_matrix_array(PyObject *pyList, int n, int d);
+
 static PyObject *matrix_array_to_python_list(double **matrix, int n, int d);
+
 static double **parsing_PyObject_to_matrix_array(PyObject *py_X, int *n, int *d);
+
+static double **make_W_matrix(double **X, int n, int d);
 
 static PyObject *symnmf_wrapper(PyObject *self, PyObject *args)
 {

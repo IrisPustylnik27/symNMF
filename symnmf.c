@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+
 #include "symnmf.h"
 #include "matrix.h"
 #include "input.h"
@@ -216,8 +217,6 @@ double **optimize_H_matrix(double **H, double **W, int n, int k)
 
     return H_old;
 }
-
-
 
 static double **calculate_new_H_matrix(double **H_old, double **W, int n, int k)
 {
