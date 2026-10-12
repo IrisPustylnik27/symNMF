@@ -13,17 +13,15 @@ static double **parsing_PyObject_to_matrix_array(PyObject *py_X, int *n, int *d)
 
 static double **make_W_matrix(double **X, int n, int d);
 
+/* Converts Python H and W, optimizes H, and returns a Python matrix. */
 static PyObject *symnmf_wrapper(PyObject *self, PyObject *args)
 {
     (void)self;
-
     PyObject *py_W = NULL, *py_H_input = NULL, *py_H_output = NULL;
     double **W = NULL, **H = NULL, **result = NULL;
     int n = 0, k = 0, W_rows = 0, W_col = 0;
-
     if (!PyArg_ParseTuple(args, "OO", &py_H_input, &py_W))
         return NULL;
-
     H = parsing_PyObject_to_matrix_array(py_H_input, &n, &k);
     if (H == NULL)
         return NULL;
@@ -56,6 +54,7 @@ cleanup:
     return py_H_output;
 }
 
+/* Converts Python vectors and returns their similarity matrix as a Python list. */
 static PyObject *sym_wrapper(PyObject *self, PyObject *args)
 {
     (void)self; // Unused parameter
@@ -90,6 +89,7 @@ cleanup:
     return py_A;
 }
 
+/* Converts Python vectors and returns their degree matrix as a Python list. */
 static PyObject *ddg_wrapper(PyObject *self, PyObject *args)
 {
     (void)self; // Unused parameter
@@ -128,6 +128,7 @@ cleanup:
     return py_D;
 }
 
+/* Converts Python vectors and returns normalized similarity as a Python list. */
 static PyObject *norm_wrapper(PyObject *self, PyObject *args)
 {
     (void)self;
@@ -162,6 +163,7 @@ cleanup:
     return py_W;
 }
 
+/* Builds normalized similarity W from X and returns NULL on failure. */
 static double **make_W_matrix(double **X, int n, int d)
 {
     double **A = NULL, **D = NULL, **result = NULL;
@@ -200,6 +202,7 @@ static struct PyModuleDef symnmfModule = {
     -1,
     symnmfMethods};
 
+/* Creates and returns the Python extension module object. */
 PyMODINIT_FUNC PyInit_symnmfmodule(void)
 {
     PyObject *m;
@@ -211,6 +214,7 @@ PyMODINIT_FUNC PyInit_symnmfmodule(void)
     return m;
 }
 
+/* Validates a Python matrix, records its shape, and converts it to C storage. */
 static double **parsing_PyObject_to_matrix_array(PyObject *py_X, int *n, int *d)
 {
     double **X;
@@ -248,17 +252,16 @@ static double **parsing_PyObject_to_matrix_array(PyObject *py_X, int *n, int *d)
     return X;
 }
 
+/* Converts an n-by-d Python list matrix to C storage, or returns NULL. */
 static double **python_list_to_matrix_array(PyObject *py_list, int n, int d)
 {
     double **list = NULL;
     PyObject *vector, *item;
     int i, j;
-
     if (!(list = allocate_matrix(n, d, 0)))
-    {
         PyErr_SetString(PyExc_MemoryError, "An Error Has Occurred");
+    if (list == NULL)
         return NULL;
-    }
     for (i = 0; i < n; i++)
     {
         vector = PyList_GetItem(py_list, i);
@@ -284,16 +287,13 @@ static double **python_list_to_matrix_array(PyObject *py_list, int n, int d)
                 goto error;
         }
     }
-    goto no_error;
-
+    return list;
 error:
     free_matrix(list, n);
-    list = NULL;
-
-no_error:
-    return list;
+    return NULL;
 }
 
+/* Converts an n-by-d C matrix to a Python list, or returns NULL on failure. */
 static PyObject *matrix_array_to_python_list(double **matrix, int n, int d)
 {
     int i, j;

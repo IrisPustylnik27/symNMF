@@ -18,6 +18,7 @@ static int resize_matrix(double ***matrix, size_t new_rows);
 static int resize_vector(double **vector, size_t new_size);
 
 
+/* Loads vectors from a file, sets their shape, and returns NULL on failure. */
 double **load_vectors(char *file_name, int *n, int *d)
 {
     FILE *file = NULL;
@@ -37,6 +38,7 @@ double **load_vectors(char *file_name, int *n, int *d)
     return vectors;
 }
 
+/* Reads all nonblank vector rows and returns their matrix, or NULL on failure. */
 static double **read_vectors_from_file(FILE *file, int *n, int *d)
 {
     size_t len = 0;
@@ -74,6 +76,7 @@ error:
     return NULL;
 }
 
+/* Expands the vector-pointer array when full and reports whether it succeeded. */
 static int resize_if_needed(double ***vectors, int *capacity_vec_list, int n)
 {
     int new_capacity;
@@ -89,6 +92,7 @@ static int resize_if_needed(double ***vectors, int *capacity_vec_list, int n)
     return 1;
 }
 
+/* Returns whether a line contains only supported whitespace characters. */
 static int is_blank_line(const char *line)
 {
     int i = 0;
@@ -110,6 +114,7 @@ static int is_blank_line(const char *line)
     return 1;
 }
 
+/* Parses one comma-separated vector and returns NULL on allocation failure. */
 static double *parse_vector(const char *line, int *d)
 {
     double *vector = NULL;
@@ -149,6 +154,7 @@ no_error:
     return vector;
 }
 
+/* Resizes a matrix pointer array and reports whether reallocation succeeded. */
 static int resize_matrix(double ***matrix, size_t new_rows)
 {
     double **new_matrix = realloc(*matrix, new_rows * sizeof(double *));
@@ -158,6 +164,7 @@ static int resize_matrix(double ***matrix, size_t new_rows)
     return 1;
 }
 
+/* Resizes a vector and reports whether reallocation succeeded. */
 static int resize_vector(double **vector, size_t new_size)
 {
     double *new_vector = realloc(*vector, new_size * sizeof(double));

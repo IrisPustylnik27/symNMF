@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include "matrix.h"
 
+/* Allocates a matrix, optionally zeroed, and returns NULL on failure. */
 double **allocate_matrix(int rows, int cols, int zero_initialize)
 {
     double **matrix;
@@ -31,6 +32,7 @@ double **allocate_matrix(int rows, int cols, int zero_initialize)
     return matrix;
 }
 
+/* Frees an n-row matrix and safely accepts a NULL pointer. */
 void free_matrix(double **matrix, int n)
 {
     int i;
@@ -46,6 +48,7 @@ void free_matrix(double **matrix, int n)
     free(matrix);
 }
 
+/* Returns the transpose of A, or NULL on allocation failure. */
 double **transpose_matrix(double **A, int rows, int cols)
 {
     int i, j;
@@ -64,6 +67,7 @@ double **transpose_matrix(double **A, int rows, int cols)
     return B;
 }
 
+/* Multiplies compatible matrices A and B; returns NULL on allocation failure. */
 double **multiply_matrices(double **A, double **B, int rowsA, int colsA, int colsB)
 {
     int i, j, k;
@@ -85,6 +89,7 @@ double **multiply_matrices(double **A, double **B, int rowsA, int colsA, int col
     return C;
 }
 
+/* Copies an n-by-k matrix into already allocated storage. */
 void copy_matrix(double **old_matrix, double **new_matrix, int n, int k)
 {
     int i, j;
@@ -97,6 +102,7 @@ void copy_matrix(double **old_matrix, double **new_matrix, int n, int k)
     }
 }
 
+/* Returns the squared Frobenius norm of the difference between A and B. */
 double squared_frobenius_norm(double **A, double **B, int rows, int cols)
 {
     int i, j;

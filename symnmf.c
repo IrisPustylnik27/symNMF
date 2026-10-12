@@ -23,6 +23,7 @@ static double squared_euclidean_distance(double *vec1, double *vec2, int d);
 
 static void fill_new_H(double **H_new, double **H_old, double **numerator, double **denominator, int n, int k);
 
+/* Validates arguments, runs the requested goal, and returns the program status. */
 int main(int argc, char *argv[])
 {
     char *goal = NULL, *file_name = NULL;
@@ -59,11 +60,13 @@ int main(int argc, char *argv[])
     return 0;
 }
 
+/* Returns whether goal names one of the supported C operations. */
 static int is_valid_goal(const char *goal)
 {
     return strcmp(goal, "sym") == 0 || strcmp(goal, "ddg") == 0 || strcmp(goal, "norm") == 0;
 }
 
+/* Computes and prints the requested matrix; returns zero on failure. */
 static int run_goal(const char *goal, double **vectors, int n, int d)
 {
     double **A = NULL, **D = NULL, **W = NULL;
@@ -99,6 +102,7 @@ cleanup:
     return success;
 }
 
+/* Prints a matrix as comma-separated rows with four decimal places. */
 static void print_matrix(double **matrix, int rows, int cols)
 {
     int i, j;
@@ -116,6 +120,7 @@ static void print_matrix(double **matrix, int rows, int cols)
     }
 }
 
+/* Builds the similarity matrix for n vectors; returns NULL on allocation failure. */
 double **similarity_matrix(double **vectors, int n, int d)
 {
     int i, j;
@@ -143,6 +148,7 @@ double **similarity_matrix(double **vectors, int n, int d)
     return A;
 }
 
+/* Builds the diagonal degree matrix of A; returns NULL on allocation failure. */
 double **diagonal_matrix(double **A, int n)
 {
     int i, j;
@@ -162,6 +168,7 @@ double **diagonal_matrix(double **A, int n)
     return D;
 }
 
+/* Builds the normalized similarity matrix from A and D; returns NULL on failure. */
 double **normalized_similarity_matrix(double **D, double **A, int n)
 {
     int i, j;
@@ -187,6 +194,7 @@ double **normalized_similarity_matrix(double **D, double **A, int n)
     return W;
 }
 
+/* Optimizes a copy of H against W and returns it, or NULL on failure. */
 double **optimize_H_matrix(double **H, double **W, int n, int k)
 {
     int t;
@@ -218,6 +226,7 @@ double **optimize_H_matrix(double **H, double **W, int n, int k)
     return H_old;
 }
 
+/* Performs one SymNMF update and returns the new H, or NULL on failure. */
 static double **calculate_new_H_matrix(double **H_old, double **W, int n, int k)
 {
     double **H_new = NULL, **H_old_transpose = NULL, **numerator = NULL, **denominator = NULL, **temp = NULL;
@@ -254,6 +263,7 @@ cleanup:
     return H_new;
 }
 
+/* Fills H_new from the update numerator, denominator, and previous H. */
 static void fill_new_H(double **H_new, double **H_old, double **numerator, double **denominator, int n, int k)
 {
     int i, j;
@@ -273,6 +283,7 @@ static void fill_new_H(double **H_new, double **H_old, double **numerator, doubl
     }
 }
 
+/* Returns the squared Euclidean distance between two d-dimensional vectors. */
 static double squared_euclidean_distance(double *vec1, double *vec2, int d)
 {
     int i;
