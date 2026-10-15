@@ -32,10 +32,12 @@ def main():
 
     if len(np.unique(symnmf_labels)) < 2 or len(np.unique(kmeans_labels)) < 2:
         exception_handler()
-
-    sil_kmeans = silhouette_score(X, kmeans_labels)
-    sil_symnmf = silhouette_score(X, symnmf_labels)
-    ari_score = adjusted_rand_score(symnmf_labels, kmeans_labels)
+    try:
+        sil_kmeans = silhouette_score(X, kmeans_labels)
+        sil_symnmf = silhouette_score(X, symnmf_labels)
+        ari_score = adjusted_rand_score(symnmf_labels, kmeans_labels)
+    except Exception:
+        exception_handler()
 
     print(f"nmf: {sil_symnmf:.4f}")
     print(f"kmeans: {sil_kmeans:.4f}")

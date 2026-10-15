@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #define ITER 300
 #define EPSILON 1e-4
+#define DIV_EPSILON 1e-12
 #define BETA 0.5
 #include <stdio.h>
 #include <stdlib.h>
@@ -183,12 +184,7 @@ double **normalized_similarity_matrix(double **D, double **A, int n)
         for (j = 0; j < n; j++)
         {
             denominator = sqrt(D[i][i] * D[j][j]);
-            if (denominator == 0.0)
-            {
-                free_matrix(W, n);
-                return NULL;
-            }
-            W[i][j] = A[i][j] / denominator;
+            W[i][j] = A[i][j] / (denominator + DIV_EPSILON);
         }
     }
     return W;
@@ -273,12 +269,8 @@ static void fill_new_H(double **H_new, double **H_old, double **numerator, doubl
     {
         for (j = 0; j < k; j++)
         {
-            ratio = 0.0;
-            if (denominator[i][j] != 0.0)
-            {
-                ratio = numerator[i][j] / denominator[i][j];
-                H_new[i][j] = H_old[i][j] * (1 - BETA + BETA * ratio);
-            }
+            ratio = numerator[i][j] / (denominator[i][j] + DIV_EPSILON);
+            H_new[i][j] = H_old[i][j] * (1 - BETA + BETA * ratio);
         }
     }
 }

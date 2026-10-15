@@ -6,9 +6,6 @@ import numpy as np
 import symnmfmodule
 
 
-np.random.seed(1234)
-
-
 def main():
     """Parse command-line input, run the selected goal, and print its result."""
     k, N, goal, vectors = parse_arguments()
@@ -52,6 +49,7 @@ def run_goal(vectors, k, N, goal):
 
 def initialize_H(laplacian, k, N):
     """Create the randomized N-by-k initial H matrix from normalized similarity."""
+    np.random.seed(1234)
     avg = np.array(laplacian).mean()
     low, high = 0, 2 * sqrt(avg / k)
     return np.random.uniform(low, high, size=(N, k)).tolist()
@@ -72,10 +70,11 @@ def parse_arguments():
 
     try:
         k = int(sys.argv[1])
-        goal = str(sys.argv[2])
-        file_name = sys.argv[3]
     except ValueError:
-        exception_handler()
+        print("Incorrect number of clusters!")
+        sys.exit(1)
+    goal = sys.argv[2]
+    file_name = sys.argv[3]
 
     try:
         vectors = np.loadtxt(file_name, delimiter=",", ndmin=2).tolist()
@@ -85,8 +84,9 @@ def parse_arguments():
     except Exception:
         exception_handler()
 
-    if k < 1 or k >= N:
-        exception_handler()
+    if k <= 1 or k >= N:
+        print("Incorrect number of clusters!")
+        sys.exit(1)
 
     return k, N, goal, vectors
 
